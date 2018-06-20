@@ -1,0 +1,48 @@
+--统计20171001至20171007期间至少连续3天有访问的用户清单
+select MSISDN
+from
+(select MSISDN,count(TIME_REC) as NUMBER_COUNT
+from
+(select MSISDN,(RECORD_DAY - rank) as TIME_REC
+from
+(select MSISDN,RECORD_DAY,row_number() over(partition  by MSISDN order by RECORD_DAY) as rank
+from PAGEVISIT) tmp) t1
+group by MSISDN,TIME_REC) t2
+where t2.NUMBER_COUNT >= 3
+
+统计20171001至20171007期间累计访问pv大于100的男性用户数。
+select count(1)
+from
+(select MSISDN,count(PV) as SUM_PV
+from
+(select MSISDN,RECORD_DAY,PV
+from
+(select PAGEVISIT.MSISDN,PAGEVISIT.RECORD_DAY,PAGEVISIT.PV,USER_INFO.SEX 
+from PAGEVISIT join USER_INFO on PAGEVISIT.MSISDN = USER_INFO.MSISDN) tmp
+where tmp.SEX = '男') t
+where RECORD_DAY >= '20171001' and RECORD_DAY <= '20171010'
+group by t.MSISDN) t1
+where t1.SUM_PV > 100
+
+
+--统计每个部门中薪酬排名top3的用户列表（注：存在多人薪酬相同的情况）
+select t3.DEPT_NAME,t3.name,t3.salary
+from
+(select t1.name,t1.salary,t2.DEPT_NAME,DENSE_RANK() over(partition  by t1.DEPARTMENTID order by t1.salary desc) as rank
+from
+(select id,name,salary,DEPARTMENTID from EMPLOYEE)t1
+join
+(select DEPARTMENTID,DEPT_NAME from DEPARTMENT)t2
+on t1.DEPARTMENTID=t2.DEPARTMENTID)t3
+where t3.rank<=3
+
+ --写一段 SQL 统计2013-10-01日至2013-10-03日期间，每天非禁止用户的取消率。你的 SQL 语句应返回如下结果，取消率（Cancellation Rate）保留两位小数。
+Select a.request_at,
+       (case when count(id) = 0 then null else round(count(case when a.status in('cancelled_by_driver','cancelled_by_client') then a.id end) / count(id), 2) end) cancellation_rate 
+  from trips a, 
+       (select * from users where upper(banned) = 'no') b, 
+       (select * from users where upper(banned) = 'no') c 
+ where a.client_id = b.users_id 
+   and a.driver_id = c.users_id 
+   and to_char(to_date( a.request_at ,'yyyy-mm-dd'),'yyyymmdd') between '20131001' and '20131003'
+ group by a.request_at;
